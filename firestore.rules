@@ -1,0 +1,169 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        request.auth.token.role == 'SUPER_ADMIN' ||
+        request.auth.token.role == 'ADMIN' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Admins registry
+    match /admins/{adminId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || (isAuthenticated() && request.auth.uid == adminId);
+    }
+
+    // Diagnostics test collection
+    match /_adminDiagnostics/{testId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Users (Students / Accounts)
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() || isOwner(userId);
+      allow delete: if isAdmin();
+
+      // FCM device token registration
+      match /devices/{deviceId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      // Student notification inboxes
+      match /notifications/{notificationId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isAdmin();
+      }
+    }
+
+    // User identifier mappings for uniqueness check
+    match /userIdentifiers/{identifierId} {
+      allow read: if true;
+      allow create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    // Join Requests (Public can submit an inquiry, admins manage)
+    match /joinRequests/{requestId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Library Memberships
+    match /libraryMemberships/{membershipId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Library Desks / Seats
+    match /librarySeats/{seatId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Library Books Catalog
+    match /libraryBooks/{bookId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Library Book Issues & Returns
+    match /libraryIssues/{issueId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Library Attendance Records
+    match /libraryAttendance/{attendanceId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Gate Passes
+    match /gatePasses/{passId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Fees & Invoices
+    match /fees/{feeId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Institutional Notices (Public can read notices, admins publish)
+    match /notices/{noticeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Push Notifications
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Notification Send Audit Logs
+    match /notificationSendLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Coaching Classes & Batches
+    match /coachingClasses/{classId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /coachingBatches/{batchId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /coachingSubjects/{subjectId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    match /coachingAttendance/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    match /homework/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    match /assignments/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    match /studyMaterials/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    match /tests/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    match /results/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Admin Activity Audit Logs
+    match /adminActivityLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+  }
+}
